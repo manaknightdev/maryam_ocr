@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Search Engine - POC</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .search-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 300px;
+            padding: 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .stats-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .results-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .results-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .results-meta {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .result-card {
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-preview {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .result-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .result-score {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .result-entities {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .entity-tag {
+            background: #f8f9fa;
+            color: #495057;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            border: 1px solid #dee2e6;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .upload-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .search-form {
+                flex-direction: column;
+            }
+            
+            .search-input {
+                min-width: auto;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔍 Semantic Search Engine</h1>
+            <p>Intelligent search across archival documents with entity recognition</p>
+        </div>
+
+        <!-- Stats Container -->
+        <div class="stats-container">
+            <h2 style="margin-bottom: 20px; text-align: center;">System Statistics</h2>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalDocs">-</div>
+                    <div class="stat-label">Total Documents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalEntities">-</div>
+                    <div class="stat-label">Total Entities</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avgEntities">-</div>
+                    <div class="stat-label">Avg Entities/Doc</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="systemStatus">-</div>
+                    <div class="stat-label">System Status</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Container -->
+        <div class="search-container">
+            <h2 style="margin-bottom: 20px;">Search Documents</h2>
+            
+            <form class="search-form" id="searchForm">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="searchInput" 
+                    placeholder="Enter your search query... (e.g., 'Napoleon Bonaparte biography')"
+                    required
+                >
+                <button type="submit" class="search-btn" id="searchBtn">
+                    Search
+                </button>
+            </form>
+
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="entityTypeFilter">Entity Type:</label>
+                    <select class="filter-select" id="entityTypeFilter">
+                        <option value="">All Types</option>
+                        <option value="person">Person</option>
+                        <option value="place">Place</option>
+                        <option value="event">Event</option>
+                        <option value="organization">Organization</option>
+                        <option value="building">Building</option>
+                        <option value="date">Date</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="limitFilter">Results:</label>
+                    <select class="filter-select" id="limitFilter">
+                        <option value="5">5 results</option>
+                        <option value="10" selected>10 results</option>
+                        <option value="20">20 results</option>
+                        <option value="50">50 results</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="thresholdFilter">Min Score:</label>
+                    <select class="filter-select" id="thresholdFilter">
+                        <option value="">Any score</option>
+                        <option value="0.1">0.1+</option>
+                        <option value="0.3" selected>0.3+</option>
+                        <option value="0.5">0.5+</option>
+                        <option value="0.7">0.7+</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Container -->
+        <div class="upload-container">
+            <h2 style="margin-bottom: 20px;">Upload Document</h2>
+            <div class="upload-area" id="uploadArea">
+                <p>📄 Drag and drop a document here, or click to select</p>
+                <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">
+                    Supported formats: PDF, TXT, DOCX, XML (Max: 50MB)
+                </p>
+                <input type="file" id="fileInput" style="display: none;" accept=".pdf,.txt,.docx,.xml">
+            </div>
+        </div>
+
+        <!-- Results Container -->
+        <div class="results-container" id="resultsContainer" style="display: none;">
+            <div class="results-header">
+                <h2 class="results-title">Search Results</h2>
+                <div class="results-meta" id="resultsMeta"></div>
+            </div>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // API base URL
+        const API_BASE = '/api/v1';
+        
+        // DOM elements
+        const searchForm = document.getElementById('searchForm');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsContent = document.getElementById('resultsContent');
+        const resultsMeta = document.getElementById('resultsMeta');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            setupEventListeners();
+        });
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Search form
+            searchForm.addEventListener('submit', handleSearch);
+            
+            // Upload area
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleFileDrop);
+            
+            // File input
+            fileInput.addEventListener('change', handleFileSelect);
+        }
+
+        // Load system statistics
+        async function loadStats() {
+            try {
+                const response = await axios.get(`${API_BASE}/stats`);
+                const stats = response.data;
+                
+                document.getElementById('totalDocs').textContent = stats.total_documents;
+                document.getElementById('totalEntities').textContent = stats.total_entities;
+                document.getElementById('avgEntities').textContent = stats.average_entities_per_doc.toFixed(1);
+                document.getElementById('systemStatus').textContent = stats.system_status.toUpperCase();
+                
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+                document.getElementById('systemStatus').textContent = 'ERROR';
+            }
+        }
+
+        // Handle search form submission
+        async function handleSearch(event) {
+            event.preventDefault();
+            
+            const query = searchInput.value.trim();
+            if (!query) return;
+            
+            // Get filter values
+            const entityType = document.getElementById('entityTypeFilter').value;
+            const limit = parseInt(document.getElementById('limitFilter').value);
+            const threshold = document.getElementById('thresholdFilter').value;
+            
+            // Prepare search parameters
+            const params = new URLSearchParams({
+                q: query,
+                limit: limit.toString()
+            });
+            
+            if (entityType) params.append('entity_types', entityType);
+            if (threshold) params.append('threshold', threshold);
+            
+            // Show loading state
+            showLoading();
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Searching...';
+            
+            try {
+                const response = await axios.get(`${API_BASE}/search?${params}`);
+                displayResults(response.data);
+                
+            } catch (error) {
+                showError('Search failed: ' + (error.response?.data?.detail || error.message));
+                
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+            }
+        }
+
+        // Display search results
+        function displayResults(data) {
+            resultsContainer.style.display = 'block';
+            
+            // Update meta information
+            resultsMeta.innerHTML = `
+                <div>
+                    <strong>${data.total_results}</strong> results found in 
+                    <strong>${data.search_time_ms.toFixed(0)}ms</strong>
+                </div>
+            `;
+            
+            // Clear previous results
+            resultsContent.innerHTML = '';
+            
+            if (data.results.length === 0) {
+                resultsContent.innerHTML = `
+                    <div class="no-results">
+                        <h3>No results found</h3>
+                        <p>Try adjusting your search query or filters</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Display results
+            data.results.forEach(result => {
+                const resultCard = createResultCard(result);
+                resultsContent.appendChild(resultCard);
+            });
+        }
+
+        // Create result card element
+        function createResultCard(result) {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            
+            // Create entities tags
+            const entitiesTags = result.entities.slice(0, 5).map(entity => 
+                `<span class="entity-tag">${entity.text} (${entity.entity_type})</span>`
+            ).join('');
+            
+            card.innerHTML = `
+                <div class="result-title">${escapeHtml(result.title)}</div>
+                <div class="result-preview">${escapeHtml(result.content_preview)}</div>
+                <div class="result-footer">
+                    <div class="result-entities">
+                        ${entitiesTags}
+                        ${result.entities.length > 5 ? `<span class="entity-tag">+${result.entities.length - 5} more</span>` : ''}
+                    </div>
+                    <div class="result-score">Score: ${result.similarity_score.toFixed(3)}</div>
+                </div>
+            `;
+            
+            // Add click handler to show document details
+            card.addEventListener('click', () => showDocumentDetails(result.document_id));
+            
+            return card;
+        }
+
+        // Show document details
+        async function showDocumentDetails(documentId) {
+            try {
+                const response = await axios.get(`${API_BASE}/documents/${documentId}`);
+                const document = response.data;
+                
+                // Create modal or detailed view
+                alert(`Document: ${document.filename}\nType: ${document.document_type}\nEntities: ${document.entities.length}`);
+                
+            } catch (error) {
+                console.error('Failed to load document details:', error);
+                alert('Failed to load document details');
+            }
+        }
+
+        // File upload handlers
+        function handleDragOver(event) {
+            event.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleFileDrop(event) {
+            event.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        }
+
+        // Upload file
+        async function uploadFile(file) {
+            // Validate file type
+            const allowedTypes = ['.pdf', '.txt', '.docx', '.xml'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedTypes.includes(fileExtension)) {
+                alert(`File type ${fileExtension} not supported. Allowed: ${allowedTypes.join(', ')}`);
+                return;
+            }
+            
+            // Validate file size (50MB)
+            if (file.size > 50 * 1024 * 1024) {
+                alert('File too large. Maximum size: 50MB');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('access_level', 'public');
+            
+            // Show upload progress
+            uploadArea.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Uploading and processing "${file.name}"...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await axios.post(`${API_BASE}/documents/upload`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                
+                const result = response.data;
+                
+                // Show success message
+                uploadArea.innerHTML = `
+                    <div style="color: #28a745; text-align: center;">
+                        <h3>✅ Upload Successful!</h3>
+                        <p><strong>${result.filename}</strong></p>
+                        <p>Document ID: ${result.document_id}</p>
+                        <p>Entities found: ${result.entities_found}</p>
+                        <button onclick="resetUploadArea()" style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                            Upload Another
+                        </button>
+                    </div>
+                `;
+                
+                // Refresh stats
+                loadStats();
+                
+            } catch (error) {
+                console.error('Upload failed:', error);
+                
+                uploadArea.innerHTML = `
+                    <div style="color: #dc3545; text-align: center;">
+                        <h3>❌ Upload Failed</h3>
+                        <p>${error.response?.data?.detail || error.message}</p>
+                        <button onclick="resetUploadArea()" style="margin-top: 15px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                            Try Again
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Reset upload area
+        function resetUploadArea() {
+            uploadArea.innerHTML = `
+                <p>📄 Drag and drop a document here, or click to select</p>
+                <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">
+                    Supported formats: PDF, TXT, DOCX, XML (Max: 50MB)
+                </p>
+            `;
+            fileInput.value = '';
+        }
+
+        // Show loading state
+        function showLoading() {
+            resultsContainer.style.display = 'block';
+            resultsMeta.textContent = '';
+            resultsContent.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Searching documents...</p>
+                </div>
+            `;
+        }
+
+        // Show error message
+        function showError(message) {
+            resultsContainer.style.display = 'block';
+            resultsMeta.textContent = '';
+            resultsContent.innerHTML = `
+                <div class="error">
+                    <strong>Error:</strong> ${escapeHtml(message)}
+                </div>
+            `;
+        }
+
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Sample search queries for testing
+        const sampleQueries = [
+            "Napoleon Bonaparte biography",
+            "French Revolution events",
+            "Paris architecture buildings",
+            "Military campaigns Europe",
+            "Historical documents France"
+        ];
+
+        // Add sample query buttons
+        function addSampleQueries() {
+            const samplesContainer = document.createElement('div');
+            samplesContainer.style.marginTop = '15px';
+            samplesContainer.innerHTML = '<p style="margin-bottom: 10px; color: #666;">Try these sample queries:</p>';
+            
+            sampleQueries.forEach(query => {
+                const button = document.createElement('button');
+                button.textContent = query;
+                button.style.cssText = `
+                    margin: 5px;
+                    padding: 8px 15px;
+                    background: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 20px;
+                    cursor: pointer;
+                    font-size: 0.9rem;
+                `;
+                button.addEventListener('click', () => {
+                    searchInput.value = query;
+                    handleSearch(new Event('submit'));
+                });
+                samplesContainer.appendChild(button);
+            });
+            
+            document.querySelector('.search-container').appendChild(samplesContainer);
+        }
+
+        // Add sample queries
+        // setTimeout(addSampleQueries, 100);
+    </script>
+</body>
+</html>

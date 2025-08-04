@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vector Search</title>
+</head>
+<body>
+    <h1>Semantic Search</h1>
+    <form method="post">
+        <input type="text" name="query" placeholder="Enter your query">
+        <button type="submit">Search</button>
+    </form>
+
+    {% if results %}
+        <h2>Results</h2>
+        <ul>
+        {% for item in results %}
+            <li><strong>{{ item.document_id }}</strong>: {{ item.content }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</body>
+</html>
