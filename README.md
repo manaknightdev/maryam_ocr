@@ -45,7 +45,7 @@ This POC addresses the requirements for a future full-scale semantic search syst
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
-cd semantic_search_poc
+cd maryam-ocr
 ```
 
 2. **Create virtual environment**
