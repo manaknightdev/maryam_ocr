@@ -10,13 +10,16 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 vector_store = VectorStore()
 
+
 @app.on_event("startup")
 async def startup_event():
     await vector_store.initialize()
 
+
 @app.get("/", response_class=HTMLResponse)
 async def form_get(request: Request):
     return templates.TemplateResponse("search.html", {"request": request, "results": None})
+
 
 @app.post("/", response_class=HTMLResponse)
 async def form_post(request: Request, query: str = Form(...)):
