@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 # ML libraries
 from sentence_transformers import SentenceTransformer
 
-from ..models.document import Document, DocumentType, AccessLevel, DocumentMetadata
+from ..models.document import Document, DocumentType, AccessLevel, DocumentMetadata, Entity, EntityType
 from ..services.entity_extractor import EntityExtractor
 from ..services.vector_store import VectorStore
 from config.settings import settings

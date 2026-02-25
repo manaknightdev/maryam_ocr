@@ -95,7 +95,8 @@ class VectorStore:
             if results['ids'] and len(results['ids'][0]) > 0:
                 for i in range(len(results['ids'][0])):
                     distance = results['distances'][0][i]
-                    similarity_score = 1 - distance
+                    # ChromaDB default metric is squared L2. For normalized vectors, Cosine Similarity = 1 - (L2^2 / 2)
+                    similarity_score = 1.0 - (distance / 2.0)
 
                     if similarity_score >= threshold:
                         result = {
