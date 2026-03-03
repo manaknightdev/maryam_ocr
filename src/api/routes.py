@@ -2,6 +2,7 @@ import time
 import logging
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Depends
+from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
@@ -448,6 +449,30 @@ async def get_document_types():
         ]
     }
 
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    
+    # Fix Swagger UI representation for List[UploadFile]
+    try:
+        if "Body_upload_document_batch_api_v1_documents_upload_batch_post" in openapi_schema["components"]["schemas"]:
+            prop = openapi_schema["components"]["schemas"]["Body_upload_document_batch_api_v1_documents_upload_batch_post"]["properties"]["files"]
+            prop["items"] = {"type": "string", "format": "binary"}
+    except KeyError:
+        pass
+        
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 if __name__ == "__main__":
     import uvicorn
