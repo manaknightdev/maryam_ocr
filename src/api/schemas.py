@@ -21,6 +21,14 @@ class DocumentUploadResponse(BaseModel):
     message: str
 
 
+class BatchDocumentUploadResponse(BaseModel):
+    """Batch document upload response schema."""
+    successful_uploads: List[DocumentUploadResponse]
+    failed_uploads: List[Dict[str, str]]
+    total_processed: int
+    message: str
+
+
 class StatsResponse(BaseModel):
     """System statistics response schema."""
     total_documents: int

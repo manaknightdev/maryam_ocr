@@ -11,7 +11,7 @@ from ..services.search_service import SearchService
 from ..services.document_processor import DocumentProcessor
 from ..models.document import EntityType, DocumentType, AccessLevel
 from ..models.search_result import SearchResponse, EntitySearchResult
-from .schemas import SearchRequest, DocumentUploadResponse, StatsResponse
+from .schemas import SearchRequest, DocumentUploadResponse, BatchDocumentUploadResponse, StatsResponse
 from config.settings import settings
 
 # Initialize FastAPI app
@@ -261,6 +261,75 @@ async def upload_document(
     except Exception as e:
         logger.error(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+@app.post("/api/v1/documents/upload-batch", response_model=BatchDocumentUploadResponse)
+async def upload_document_batch(
+    files: List[UploadFile] = File(...),
+    access_level: AccessLevel = AccessLevel.PUBLIC,
+    document_processor: DocumentProcessor = Depends(get_document_processor)
+):
+    """
+    Upload and process multiple new documents.
+    
+    - **files**: List of document files to upload
+    - **access_level**: Access level for the documents (public, restricted, private)
+    """
+    successful_uploads = []
+    failed_uploads = []
+
+    for file in files:
+        try:
+            # Validate file type
+            if not file.filename:
+                failed_uploads.append({"filename": "Unknown", "error": "No filename provided"})
+                continue
+            
+            file_extension = Path(file.filename).suffix.lower()
+            if file_extension not in settings.ALLOWED_EXTENSIONS:
+                failed_uploads.append({"filename": file.filename, "error": f"File type {file_extension} not supported."})
+                continue
+            
+            # Validate file size
+            content = await file.read()
+            if len(content) > settings.MAX_FILE_SIZE:
+                failed_uploads.append({"filename": file.filename, "error": f"File too large. Maximum size: {settings.MAX_FILE_SIZE / (1024*1024):.1f}MB"})
+                continue
+            
+            # Save uploaded file
+            upload_dir = Path(settings.UPLOAD_DIR)
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            
+            file_path = upload_dir / file.filename
+            with open(file_path, 'wb') as f:
+                f.write(content)
+            
+            # Process document
+            document = await document_processor.process_document(str(file_path), access_level)
+            
+            if not document:
+                failed_uploads.append({"filename": file.filename, "error": "Failed to process document"})
+                continue
+            
+            successful_uploads.append(DocumentUploadResponse(
+                document_id=document.id,
+                filename=document.filename,
+                status="processed",
+                entities_found=len(document.entities),
+                access_level=document.access_level.value,
+                message="Document uploaded and processed successfully"
+            ))
+            
+        except Exception as e:
+            logger.error(f"Batch upload error for file {getattr(file, 'filename', 'Unknown')}: {str(e)}")
+            failed_uploads.append({"filename": getattr(file, 'filename', 'Unknown'), "error": str(e)})
+
+    return BatchDocumentUploadResponse(
+        successful_uploads=successful_uploads,
+        failed_uploads=failed_uploads,
+        total_processed=len(successful_uploads) + len(failed_uploads),
+        message=f"Batch processed: {len(successful_uploads)} successful, {len(failed_uploads)} failed."
+    )
 
 
 @app.get("/api/v1/documents/{document_id}")
