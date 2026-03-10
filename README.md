@@ -39,33 +39,41 @@ This POC addresses the requirements for a future full-scale semantic search syst
 - Python 3.8+
 - pip
 - Git
+- Tesseract OCR (required for image extraction)
+    - Ubuntu/Debian: `sudo apt-get install tesseract-ocr`
+    - macOS: `brew install tesseract`
 
 ### Installation
 
 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd maryam-ocr
 ```
 
 2. **Create virtual environment**
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 3. **Install dependencies**
+
 ```bash
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
 
 4. **Initialize the environment**
+
 ```bash
 python scripts/setup_data.py
 ```
 
 5. **Run the POC**
+
 ```bash
 python -m src.main
 ```
@@ -73,6 +81,7 @@ python -m src.main
 ### Expected Output
 
 The POC will demonstrate:
+
 - Document processing and indexing
 - Semantic search across sample documents
 - Entity extraction and relationship discovery
@@ -81,6 +90,7 @@ The POC will demonstrate:
 ## Features
 
 ### Document Processing
+
 - **PDF text extraction** using PyPDF2
 - **XML parsing** for finding aids
 - **DOCX support** for modern documents
@@ -88,18 +98,21 @@ The POC will demonstrate:
 - **Multi-language support** (currently optimized for English)
 
 ### Entity Recognition
+
 - **Named Entity Recognition** using spaCy
 - **Custom entity types**: Person, Place, Event, Organization, Building, Date
 - **Relationship extraction** between entities
 - **Confidence scoring** for entity matches
 
 ### Semantic Search
+
 - **Vector embeddings** using Sentence-BERT (`all-MiniLM-L6-v2`)
 - **Similarity search** with configurable thresholds
 - **Hybrid search** combining semantic and keyword matching
 - **Entity-filtered search** results
 
 ### Vector Storage
+
 - **ChromaDB integration** for persistent vector storage
 - **Scalable indexing** for large document collections
 - **Metadata filtering** and search optimization

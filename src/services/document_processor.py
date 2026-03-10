@@ -11,6 +11,8 @@ import PyPDF2
 from docx import Document as DocxDocument
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
+import pytesseract
+from PIL import Image
 
 # ML libraries
 from sentence_transformers import SentenceTransformer
@@ -130,6 +132,8 @@ class DocumentProcessor:
                 return self._extract_text_from_docx(file_path)
             elif doc_type == DocumentType.XML:
                 return self._extract_text_from_xml(file_path)
+            elif doc_type == DocumentType.IMAGE:
+                return self._extract_text_from_image(file_path)
             else:
                 self.logger.warning(f"Text extraction not implemented for type: {doc_type}")
                 return ""
@@ -183,19 +187,23 @@ class DocumentProcessor:
     def _extract_text_from_xml(self, file_path: Path) -> str:
         """Extract text from XML file."""
         try:
-            tree = ET.parse(file_path)
-            root = tree.getroot()
-            
-            # Extract all text content from XML
-            text_content = []
-            for elem in root.iter():
-                if elem.text and elem.text.strip():
-                    text_content.append(elem.text.strip())
-            
-            return '\n'.join(text_content)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            soup = BeautifulSoup(content, 'lxml')
+            return soup.get_text(separator=' ', strip=True)
             
         except Exception as e:
             self.logger.error(f"Error reading XML {file_path}: {str(e)}")
+            return ""
+
+    def _extract_text_from_image(self, file_path: Path) -> str:
+        """Extract text from Image file using OCR."""
+        try:
+            image = Image.open(file_path)
+            text = pytesseract.image_to_string(image)
+            return text.strip()
+        except Exception as e:
+            self.logger.error(f"Error performing OCR on image {file_path}: {str(e)}")
             return ""
     
     def _extract_metadata(self, file_path: Path, doc_type: DocumentType, content: str) -> DocumentMetadata:

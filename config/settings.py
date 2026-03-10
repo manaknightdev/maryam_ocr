@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     
     # Document Processing
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
-    ALLOWED_EXTENSIONS: List[str] = [".pdf", ".txt", ".docx", ".xml"]
+    ALLOWED_EXTENSIONS: List[str] = [".pdf", ".txt", ".docx", ".xml", ".jpg", ".jpeg", ".png", ".gif"]
     
     # Search
     MAX_SEARCH_RESULTS: int = 50
