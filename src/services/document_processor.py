@@ -44,6 +44,9 @@ class DocumentProcessor:
         Returns:
             Processed Document object or None if processing failed
         """
+        import asyncio
+        loop = asyncio.get_event_loop()
+        
         try:
             file_path = Path(file_path)
             if not file_path.exists():
@@ -56,23 +59,26 @@ class DocumentProcessor:
                 self.logger.error(f"Unsupported file type: {file_path.suffix}")
                 return None
             
-            # Extract text content
-            content = self._extract_text(file_path, doc_type)
+            # Extract text content (blocking operation)
+            content = await loop.run_in_executor(None, self._extract_text, file_path, doc_type)
             if not content:
                 self.logger.error(f"Failed to extract text from: {file_path}")
                 return None
             
-            # Generate document ID
-            doc_id = self._generate_document_id(file_path, content)
+            # Generate document ID (blocking)
+            doc_id = await loop.run_in_executor(None, self._generate_document_id, file_path, content)
             
-            # Extract metadata
-            metadata = self._extract_metadata(file_path, doc_type, content)
+            # Extract metadata (blocking)
+            metadata = await loop.run_in_executor(None, self._extract_metadata, file_path, doc_type, content)
             
-            # Extract entities
-            entities = self.entity_extractor.extract_entities(content)
+            # Extract entities (blocking)
+            entities = await loop.run_in_executor(None, self.entity_extractor.extract_entities, content)
             
-            # Generate embedding
-            embedding = self.embedding_model.encode(content).tolist()
+            # Generate embedding (blocking)
+            def generate_embedding(text):
+                return self.embedding_model.encode(text).tolist()
+                
+            embedding = await loop.run_in_executor(None, generate_embedding, content)
             
             # Create document object
             document = Document(
@@ -189,7 +195,13 @@ class DocumentProcessor:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            soup = BeautifulSoup(content, 'lxml')
+            
+            # Use xml parser instead of lxml (which defaults to html)
+            from bs4 import XMLParsedAsHTMLWarning
+            import warnings
+            warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+            
+            soup = BeautifulSoup(content, 'xml')
             return soup.get_text(separator=' ', strip=True)
             
         except Exception as e:

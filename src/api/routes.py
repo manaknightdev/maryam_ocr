@@ -276,26 +276,25 @@ async def upload_document_batch(
     - **files**: List of document files to upload
     - **access_level**: Access level for the documents (public, restricted, private)
     """
+    import asyncio
+    
     successful_uploads = []
     failed_uploads = []
 
-    for file in files:
+    async def process_single_file(file):
         try:
             # Validate file type
             if not file.filename:
-                failed_uploads.append({"filename": "Unknown", "error": "No filename provided"})
-                continue
+                return {"filename": "Unknown", "error": "No filename provided", "success": False}
             
             file_extension = Path(file.filename).suffix.lower()
             if file_extension not in settings.ALLOWED_EXTENSIONS:
-                failed_uploads.append({"filename": file.filename, "error": f"File type {file_extension} not supported."})
-                continue
+                return {"filename": file.filename, "error": f"File type {file_extension} not supported.", "success": False}
             
             # Validate file size
             content = await file.read()
             if len(content) > settings.MAX_FILE_SIZE:
-                failed_uploads.append({"filename": file.filename, "error": f"File too large. Maximum size: {settings.MAX_FILE_SIZE / (1024*1024):.1f}MB"})
-                continue
+                return {"filename": file.filename, "error": f"File too large. Maximum size: {settings.MAX_FILE_SIZE / (1024*1024):.1f}MB", "success": False}
             
             # Save uploaded file
             upload_dir = Path(settings.UPLOAD_DIR)
@@ -309,21 +308,31 @@ async def upload_document_batch(
             document = await document_processor.process_document(str(file_path), access_level)
             
             if not document:
-                failed_uploads.append({"filename": file.filename, "error": "Failed to process document"})
-                continue
+                return {"filename": file.filename, "error": "Failed to process document", "success": False}
             
-            successful_uploads.append(DocumentUploadResponse(
-                document_id=document.id,
-                filename=document.filename,
-                status="processed",
-                entities_found=len(document.entities),
-                access_level=document.access_level.value,
-                message="Document uploaded and processed successfully"
-            ))
+            return {
+                "success": True,
+                "document": DocumentUploadResponse(
+                    document_id=document.id,
+                    filename=document.filename,
+                    status="processed",
+                    entities_found=len(document.entities),
+                    access_level=document.access_level.value,
+                    message="Document uploaded and processed successfully"
+                )
+            }
             
         except Exception as e:
             logger.error(f"Batch upload error for file {getattr(file, 'filename', 'Unknown')}: {str(e)}")
-            failed_uploads.append({"filename": getattr(file, 'filename', 'Unknown'), "error": str(e)})
+            return {"filename": getattr(file, 'filename', 'Unknown'), "error": str(e), "success": False}
+
+    # Process files sequentially to prevent out-of-memory errors on large batches
+    for f in files:
+        res = await process_single_file(f)
+        if res["success"]:
+            successful_uploads.append(res["document"])
+        else:
+            failed_uploads.append({"filename": res["filename"], "error": res["error"]})
 
     return BatchDocumentUploadResponse(
         successful_uploads=successful_uploads,
